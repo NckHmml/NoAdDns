@@ -7,12 +7,22 @@ namespace NoAdDns.Server.Protocol
 {
     public class DnsRequest
     {
+        protected byte[] Message { get; set; }
+        public DnsHeader Header { get;  }
+
         public DnsRequest() { }
 
         public DnsRequest(byte[] message)
         {
+            Message = message;
+            Header = ParseHeader();
+            ParseQuestions().ToList();
+        }
+
+        protected DnsHeader ParseHeader()
+        {
             // Parse header
-            var header = new DnsHeader(message);
+            var header = new DnsHeader(Message);
 
             // Check for behaviour that is normally a response
             if (header.Flags.IsResponse ||
@@ -23,18 +33,18 @@ namespace NoAdDns.Server.Protocol
                 throw new ArgumentException("Invalid request message", "message");
             }
 
-            ParseQuestions(header, message).ToList();
+            return header;
         }
 
-        private IEnumerable<DnsQuestion> ParseQuestions(DnsHeader header, byte[] message)
+        protected IEnumerable<DnsQuestion> ParseQuestions()
         {
             int offset = DnsHeader.SIZE;
-            if (header.QuestionCount > 0 && message.Length <= offset)
+            if (Header.QuestionCount > 0 && Message.Length <= offset)
                 throw new ArgumentException("Invalid request message", "message");
 
-            for (int i = 0; i < header.QuestionCount; i++)
+            for (int i = 0; i < Header.QuestionCount; i++)
             {
-                var question = new DnsQuestion(message, offset);
+                var question = new DnsQuestion(Message, offset);
                 yield return question;
                 offset += question.Size;
             }
